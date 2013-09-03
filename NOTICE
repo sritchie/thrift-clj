@@ -1,0 +1,8 @@
+thrift-clj is a thrift code generator for Clojure.
+Copyright 2012 Twitter, Inc.
+
+Third Party Dependencies:
+
+Thrift
+Apache Public License 2.0
+http://thrift.apache.org/
