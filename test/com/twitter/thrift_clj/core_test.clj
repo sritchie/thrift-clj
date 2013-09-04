@@ -91,7 +91,10 @@
                :functions (n-of (is-type Function) 4)}))
 
 (fact "const parsing."
-  (match-const "const i32 INT32CONSTANT = 9853") => (parses-to "face"))
+  (match-const "const i32 INT32CONSTANT = 9853")
+  => (parses-to (map->Const {:name "INT32CONSTANT"
+                             :type "i32"
+                             :value (->IntConstant 9853)})))
 
 ;; ## Examples
 
