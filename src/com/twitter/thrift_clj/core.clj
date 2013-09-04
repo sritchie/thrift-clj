@@ -5,7 +5,8 @@
         [clojure.string :only (lower-case)]
         com.twitter.thrift-clj.ast
         com.twitter.thrift-clj.mparser
-        com.twitter.thrift-clj.util))
+        com.twitter.thrift-clj.util)
+  (:require [instaparse.core :as insta]))
 
 ;; ## Thrift-Specific Parsers
 
@@ -493,3 +494,52 @@ prefix."
               defs     definitions
               _ eof]
              (->Document incls ns-decls defs))))
+
+(def instagram
+  (insta/parser
+   "
+Document        ::=  Header* Definition*
+Header          ::=  Include | CppInclude | Namespace
+Include         ::=  'include' Literal
+CppInclude      ::=  'cpp_include' Literal
+Namespace       ::=  ( 'namespace' <#'[\\s+]'> ( NamespaceScope Identifier ) |
+                                        ( 'smalltalk.category' STIdentifier ) |
+                                        ( 'smalltalk.prefix' Identifier ) ) |
+                          ( 'php_namespace' Literal ) |
+                          ( 'xsd_namespace' Literal )
+NamespaceScope  ::=  ('*' | 'cpp' | 'java' | 'py' | 'perl' | 'rb' | 'cocoa' | 'csharp') <#'[\\s+]'>
+Definition      ::=  Const | Typedef | Enum | Senum | Struct | Exception | Service
+Const           ::=  'const' FieldType Identifier '=' ConstValue ListSeparator?
+Typedef         ::=  'typedef' DefinitionType Identifier
+Enum            ::=  'enum' Identifier '{' (Identifier ('=' IntConstant)? ListSeparator?)* '}'
+Senum           ::=  'senum' Identifier '{' (Literal ListSeparator?)* '}'
+Struct          ::=  'struct' Identifier 'xsd_all'? '{' Field* '}'
+Exception       ::=  'exception' Identifier '{' Field* '}'
+Service         ::=  'service' Identifier ( 'extends' Identifier )? '{' Function* '}'
+Field           ::=  FieldID? FieldReq? FieldType Identifier ('=' ConstValue)? XsdFieldOptions ListSeparator?
+FieldID         ::=  IntConstant ':'
+FieldReq        ::=  'required' | 'optional'
+XsdFieldOptions ::=  'xsd_optional'? 'xsd_nillable'? XsdAttrs?
+XsdAttrs        ::=  'xsd_attrs' '{' Field* '}'
+Function        ::=  'oneway'? FunctionType Identifier '(' Field* ')' Throws? ListSeparator?
+FunctionType    ::=  FieldType | 'void'
+Throws          ::=  'throws' '(' Field* ')'
+FieldType       ::=  Identifier | BaseType | ContainerType
+DefinitionType  ::=  BaseType | ContainerType
+BaseType        ::=  'bool' | 'byte' | 'i16' | 'i32' | 'i64' | 'double' | 'string' | 'binary' | 'slist'
+ContainerType   ::=  MapType | SetType | ListType
+MapType         ::=  'map' CppType? '<' FieldType ',' FieldType '>'
+SetType         ::=  'set' CppType? '<' FieldType '>'
+ListType        ::=  'list' '<' FieldType '>' CppType?
+CppType         ::=  'cpp_type' Literal
+ConstValue      ::=  IntConstant | DoubleConstant | Literal | Identifier | ConstList | ConstMap
+IntConstant     ::=  ('+' | '-')? Digit+
+DoubleConstant  ::=  ('+' | '-')? Digit* ('.' Digit+)? ( ('E' | 'e') IntConstant )?
+ConstList       ::=  '[' (ConstValue ListSeparator?)* ']'
+ConstMap        ::=  '{' (ConstValue ':' ConstValue ListSeparator?)* '}'
+Literal         ::=  (<'\\\"'> #'[^\"]+'* <'\\\"'>) | (<\"'\"> #'[^\\']+'* <\"'\">)
+Identifier      ::=  ( Letter | '_' ) ( Letter | Digit | '.' | '_' )*
+STIdentifier    ::=  ( Letter | '_' ) ( Letter | Digit | '.' | '_' | '-' )*
+ListSeparator   ::=  ',' | ';'
+Letter          ::=  #'[a-zA-Z]'
+Digit           ::=  #'[0-9]'"))

@@ -96,8 +96,7 @@
 ;; ## Examples
 
 (def forma
-  "
-/**
+  "/**
 * Just some comment nastiness. // nested line.
 *
 *
