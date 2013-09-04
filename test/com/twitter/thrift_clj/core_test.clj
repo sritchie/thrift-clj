@@ -110,7 +110,7 @@
  cpp_include \"boggle.thrift\"
 
 namespace clojure forma.schema
-namespace ruby forma.schema
+namespace rb forma.schema
 
 /**
  * Thrift lets you do typedefs to get pretty names for your types. Standard
@@ -188,7 +188,7 @@ struct FormaValue {
        [(->Include "face.thrift" "face" nil)
         (->CppInclude "boggle.thrift")]
        [(->Namespace "clojure" "forma.schema")
-        (->Namespace "ruby" "forma.schema")]
+        (->Namespace "rb" "forma.schema")]
        [(->TypeDef "MyInteger" "i32")
         (->Const "INT32CONSTANT" "i32" (->IntConstant 9853))
         (->Struct "FireValue"

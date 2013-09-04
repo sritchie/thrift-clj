@@ -495,51 +495,143 @@ prefix."
               _ eof]
              (->Document incls ns-decls defs))))
 
+(def p
+  (insta/parser "<edges> : line+
+line : <whitespace> letter <'->'> letter <whitespace> number <whitespace>
+letter : #'[A-Z]'
+number : #'[0-9]+'
+whitespace : #'\\s*'
+"))
+
 (def instagram
   (insta/parser
    "
-Document        ::=  Header* Definition*
-Header          ::=  Include | CppInclude | Namespace
-Include         ::=  'include' Literal
-CppInclude      ::=  'cpp_include' Literal
-Namespace       ::=  ( 'namespace' <#'[\\s+]'> ( NamespaceScope Identifier ) |
-                                        ( 'smalltalk.category' STIdentifier ) |
-                                        ( 'smalltalk.prefix' Identifier ) ) |
-                          ( 'php_namespace' Literal ) |
-                          ( 'xsd_namespace' Literal )
-NamespaceScope  ::=  ('*' | 'cpp' | 'java' | 'py' | 'perl' | 'rb' | 'cocoa' | 'csharp') <#'[\\s+]'>
-Definition      ::=  Const | Typedef | Enum | Senum | Struct | Exception | Service
-Const           ::=  'const' FieldType Identifier '=' ConstValue ListSeparator?
-Typedef         ::=  'typedef' DefinitionType Identifier
-Enum            ::=  'enum' Identifier '{' (Identifier ('=' IntConstant)? ListSeparator?)* '}'
-Senum           ::=  'senum' Identifier '{' (Literal ListSeparator?)* '}'
-Struct          ::=  'struct' Identifier 'xsd_all'? '{' Field* '}'
-Exception       ::=  'exception' Identifier '{' Field* '}'
-Service         ::=  'service' Identifier ( 'extends' Identifier )? '{' Function* '}'
-Field           ::=  FieldID? FieldReq? FieldType Identifier ('=' ConstValue)? XsdFieldOptions ListSeparator?
-FieldID         ::=  IntConstant ':'
-FieldReq        ::=  'required' | 'optional'
+Document        ::= <ws> Header* Definition*
+SlashComment    ::= <'//'> #'[^\n]'*
+PoundComment    ::= <'#'> #'[^\n]'*
+BlockComment    ::= '/*' #'(?s).'* '*/'
+Comment         ::= SlashComment | PoundComment | BlockComment | <ws>
+ws              ::= <[#'\\s*']> | (Comment <ws>)
+Header          ::=  (Include | CppInclude | Namespace)
+Include         ::=  <'include'> <ws> Literal <ws>
+CppInclude      ::=  <'cpp_include'> <ws> Literal <ws>
+Namespace       ::=  (( <'namespace'> <ws> ( NamespaceScope Identifier ) |
+                                        ( <'smalltalk.category'> <ws> STIdentifier ) |
+                                        ( <'smalltalk.prefix'> <ws> Identifier ) ) |
+                          ( <'php_namespace'> <ws> Literal ) |
+                          ( <'xsd_namespace'> <ws> Literal )) <ws>
+NamespaceScope  ::=  ('*' | 'cpp' | 'java' | 'py' | 'perl' | 'rb' | 'cocoa' | 'csharp' | 'clojure') <ws>
+Definition      ::=  (Const | Typedef | Enum | Senum | Struct | Exception | Service) <ws>
+Const           ::=  <'const'> <ws> FieldType Identifier <'='> <ws> ConstValue ListSeparator?
+Typedef         ::=  <'typedef'> <ws> DefinitionType Identifier
+Enum            ::=  <'enum'> <ws> Identifier <'{'> ws (Identifier ws ('=' ws IntConstant)? ListSeparator?)* <'}'>
+Senum           ::=  <'senum'> <ws> Identifier <'{'> (Literal ListSeparator?)* <'}'>
+Struct          ::=  <'struct'> <ws> Identifier <ws> ('xsd_all'? | <ws>) <'{'> (<ws> Field <ws>)* <'}'>
+Exception       ::=  <'exception'> <ws> Identifier <'{'> (<ws> Field)* <'}'>
+Service         ::=  <'service'> <ws> Identifier ( <'extends'> <ws> Identifier )? <'{'> (<ws> Function <ws>)* <'}'>
+Field           ::=  FieldID <ws> FieldReq? <ws> FieldType <ws> Identifier <ws> ('=' <ws> ConstValue)? <ws> XsdFieldOptions <ws> <ListSeparator>? <ws>
+FieldID         ::=  (IntConstant <ws> <':'>) <ws>
+FieldReq        ::=  ('required' | 'optional') <ws>
 XsdFieldOptions ::=  'xsd_optional'? 'xsd_nillable'? XsdAttrs?
 XsdAttrs        ::=  'xsd_attrs' '{' Field* '}'
-Function        ::=  'oneway'? FunctionType Identifier '(' Field* ')' Throws? ListSeparator?
+Function        ::=  <('oneway' ws)?> FunctionType Identifier '(' Field* ')' Throws? ListSeparator?
 FunctionType    ::=  FieldType | 'void'
 Throws          ::=  'throws' '(' Field* ')'
 FieldType       ::=  Identifier | BaseType | ContainerType
 DefinitionType  ::=  BaseType | ContainerType
-BaseType        ::=  'bool' | 'byte' | 'i16' | 'i32' | 'i64' | 'double' | 'string' | 'binary' | 'slist'
+BaseType        ::=  ('bool' | 'byte' | 'i16' | 'i32' | 'i64' | 'double' | 'string' | 'binary' | 'slist') <ws>
 ContainerType   ::=  MapType | SetType | ListType
-MapType         ::=  'map' CppType? '<' FieldType ',' FieldType '>'
-SetType         ::=  'set' CppType? '<' FieldType '>'
-ListType        ::=  'list' '<' FieldType '>' CppType?
-CppType         ::=  'cpp_type' Literal
-ConstValue      ::=  IntConstant | DoubleConstant | Literal | Identifier | ConstList | ConstMap
-IntConstant     ::=  ('+' | '-')? Digit+
-DoubleConstant  ::=  ('+' | '-')? Digit* ('.' Digit+)? ( ('E' | 'e') IntConstant )?
-ConstList       ::=  '[' (ConstValue ListSeparator?)* ']'
-ConstMap        ::=  '{' (ConstValue ':' ConstValue ListSeparator?)* '}'
-Literal         ::=  (<'\\\"'> #'[^\"]+'* <'\\\"'>) | (<\"'\"> #'[^\\']+'* <\"'\">)
-Identifier      ::=  ( Letter | '_' ) ( Letter | Digit | '.' | '_' )*
-STIdentifier    ::=  ( Letter | '_' ) ( Letter | Digit | '.' | '_' | '-' )*
-ListSeparator   ::=  ',' | ';'
-Letter          ::=  #'[a-zA-Z]'
-Digit           ::=  #'[0-9]'"))
+MapType         ::=  <'map'> <ws> CppType? <'<'> <ws> FieldType <','> FieldType <'>'> <ws>
+SetType         ::=  <'set'>  <ws> CppType? <'<'> FieldType <'>'> <ws>
+ListType        ::=  <'list'> <ws> <'<'> FieldType <'>'> CppType? <ws>
+CppType         ::=  <'cpp_type'> <ws> Literal
+ConstValue      ::=  (IntConstant | DoubleConstant | Literal | Identifier | ConstList | ConstMap)
+IntConstant     ::=  ('+' | '-')? Digit+ <ws>
+DoubleConstant  ::=  ('+' | '-')? Digit* ('.' Digit+)? ( ('E' | 'e') IntConstant )? <ws>
+ConstList       ::=  <'['> (ConstValue ListSeparator?)* <']'> <ws>
+ConstMap        ::=  <'{'> (ConstValue <':'> ConstValue <ListSeparator>?)* <'}'> <ws>
+Literal         ::=  ((<'\\\"'> #'[^\"]+'* <'\\\"'>) | (<\"'\"> #'[^\\']+'* <\"'\">)) <ws>
+Identifier      ::=  ( Letter | '_' ) ( Letter | Digit | '.' | '_' )* <ws>
+STIdentifier    ::=  ( Letter | '_' ) ( Letter | Digit | '.' | '_' | '-' )* <ws>
+ListSeparator ::=  (',' | ';') <ws>
+<Letter>          ::=  #'[a-zA-Z]'
+<Digit>           ::=  #'[0-9]'"))
+
+
+(instagram
+ "/**
+* Just some comment nastiness. // nested line.
+*
+*
+*/
+
+// And more comments by me.
+# Bullshit.
+
+// include \"DOESNTEXIST.thrift\"
+ include \"face.thrift\"
+ cpp_include \"boggle.thrift\"
+
+namespace clojure forma.schema
+namespace rb forma.schema
+
+/**
+ * Thrift lets you do typedefs to get pretty names for your types. Standard
+ * C style here.
+ */
+typedef i32 MyInteger
+/**
+ * Thrift also lets you define constants for use across languages. Complex
+ * types and structs are specified using JSON notation.
+ */
+const i32 INT32CONSTANT = 9853
+
+struct /* random whitespace */ FireValue {
+  1: i32 temp330;
+  2: i32 conf50;
+  3: i32 bothPreds;
+  4: i32 count;
+}
+
+/**
+ * Structs can also be exceptions, if they are nasty.
+ */
+exception InvalidOperation {
+  1: i32 what,
+  2: string why
+}
+
+service Calculator extends face.SharedService {
+  /**
+   * A method definition looks like C code. It has a return type, arguments,
+   * and optionally a list of exceptions that it may throw. Note that argument
+   * lists and exception lists are specified using the exact same syntax as
+   * field lists in struct or exception definitions.  NOTE: Overloading of
+   * methods is not supported; each method requires a unique name.
+   */
+
+   void ping(),
+
+   i32 add(1:i32 num1, 2:i32 num2),
+
+   i32 calculate(1:i32 logid, 2:FireValue fv) throws (1:InvalidOperation ouch),
+
+   /**
+    * This method has an oneway modifier. That means the client only makes
+    * a request and does not listen for any response at all. Oneway methods
+    * must be void.
+    *
+    * The server may execute async invocations of the same client in parallel/
+    * out of order.
+    */
+   oneway void zip(),
+}
+
+struct FormaValue {
+  1: FireValue fireValue;
+  2: double shortDrop;
+  3: double longDrop;
+  4: double tStat;
+  5: optional double paramBreak;
+}
+")
